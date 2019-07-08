@@ -4,7 +4,8 @@ var currentPalette;
 var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
 var labmemo = {};
 
-var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
+//var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
+var nearestmemo = {};
 
 function d3lab(r, g, b) {
     //r,g,b are integers from 0 to 255, as from ImageData
@@ -18,6 +19,7 @@ function d3lab(r, g, b) {
     }
 }
 
+/*
 function deltae00(rgb1, rgb2) {
     //accepts d3.rgb objects
     //apparently integers are faster than strings for this?
@@ -36,7 +38,7 @@ function deltae00(rgb1, rgb2) {
         return deltae00memo[args];
     }
 }
-
+*/
 
 function drawImageFromFile() {
     let canvas = document.getElementById('image_window');
@@ -64,6 +66,8 @@ function paletteSetup() {
         currentPalette[i].d3color = swatch;
         currentPalette[i].lab = d3.lab(swatch);
     }
+    //empty the nearestmemo cache; it assumes the current palette
+    nearestmemo = {};
 }
 
 function loadPaletteFromFile() {
@@ -90,7 +94,7 @@ function loadPaletteFromFile() {
         alert("The palette format is unsupported.");
     }
 }
-
+/*
 function findNearestColor(pixel, palette) {
     //pixel: an array with three components
     //palette: an array of objects
@@ -112,6 +116,33 @@ function findNearestColor(pixel, palette) {
         return obj;
     });
     let result = _.min(deltaEs, _.iteratee('deltaE'));
+    return result;
+}
+*/
+function findNearestColor(pixel, palette) {
+    //pixel: an array with three components
+    //palette: an array of objects
+    //this assumes the anypalette format, where each object contains properties for r, g, and b
+    //and also a toString method which returns a CSS Color Module Level 3 specifier string
+    //e.g., "rgb(255, 255, 255)"
+    let key = pixel[0] << 16 | pixel[1] << 8 | pixel[2];
+    if (nearestmemo[key]) {
+        return nearestmemo[key];
+    }
+    let deltaEs = palette.map(function (color) {
+        //color is the object
+        let swatch = color.d3color;
+        let labSwatch = color.lab;
+        let labPixel = d3lab(pixel[0], pixel[1], pixel[2]);
+        let obj = {
+            color: swatch,
+            deltaE: DeltaE.getDeltaE00(
+                { L: labSwatch.l, A: labSwatch.a, B: labSwatch.b }, { L: labPixel.l, A: labPixel.a, B: labPixel.b })
+        };
+        return obj;
+    });
+    let result = _.min(deltaEs, _.iteratee('deltaE'));
+    nearestmemo[key] = result;
     return result;
 }
 
