@@ -1,0 +1,25 @@
+doctype html
+html
+  head
+    title= title
+    link(rel='stylesheet', href='https://unpkg.com/purecss@1.0.0/build/pure-min.css', integrity='sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w',
+    crossorigin='anonymous')
+    script(src="https://underscorejs.org/underscore-min.js")
+    
+    script(src="javascripts/anypalette.js")
+
+    script(src="javascripts/deltae.global.min.js")
+    script(src="https://d3js.org/d3-color.v1.min.js")
+    //script(src="d3-color-1.2.8/src/index.js", type="module")
+
+    script(src="javascripts/main.js")
+        
+
+        
+  body
+    h1= title
+    p Welcome to #{title}
+    canvas(id="image_window" width=800 height=800)
+    input(type="file", name="img", size="65", id="uploadImage")
+    input(type="file", name="ase", size="65", id="uploadPalette")
+    button(type="button") start
