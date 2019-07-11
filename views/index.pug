@@ -2,8 +2,8 @@ doctype html
 html
   head
     title= title
-    link(rel='stylesheet', href='https://unpkg.com/purecss@1.0.0/build/pure-min.css', integrity='sha384-nn4HPE8lTHyVtfCBi5yW9d20FjT8BJwUXyWZT9InLYax14RDjBj46LmSztkmNP9w',
-    crossorigin='anonymous')
+    link(rel='stylesheet', href="https://unpkg.com/purecss@1.0.1/build/pure-min.css" integrity="sha384-oAOxQR6DkCoMliIh8yFnu25d7Eq/PHS21PClpwjOTeU2jRSq11vu66rf90/cZr47" crossorigin="anonymous")
+    link(rel="stylesheet" href="https://unpkg.com/purecss@1.0.1/build/grids-responsive-min.css")
     script(src="https://underscorejs.org/underscore-min.js")
     
     script(src="javascripts/anypalette.js")
@@ -13,13 +13,25 @@ html
     //script(src="d3-color-1.2.8/src/index.js", type="module")
 
     script(src="javascripts/main.js")
-        
+    meta(name="viewport" content="width=device-width, initial-scale=1")
 
-        
-  body
-    h1= title
-    p Welcome to #{title}
-    canvas(id="image_window" width=800 height=800)
-    input(type="file", name="img", size="65", id="uploadImage")
-    input(type="file", name="ase", size="65", id="uploadPalette")
-    button(type="button") start
+body
+  div(class="pure-g" style="margin-left: 2em")
+    div(class="pure-u-1")
+      h1= title
+      p Welcome to #{title}
+    div(class="pure-u-1-2")
+      canvas(id="image_before" class="pure-img" style="margin: 1em")
+    div(class="pure-u-1-2")
+      canvas(id="image_after" class="pure-img" style="margin: 1em")
+    div(class="pure-u-1")
+      canvas(id="palette_display" class="pure-img")
+    div(class="pure-u-lg-1-3")
+     p(class="pure-u-1") Upload an image
+     input(type="file", name="img", id="uploadImage")
+    div(class="pure-u-lg-1-6")
+     p(class="pure-u-1") Upload a palette
+     input(type="file", name="ase", id="uploadPalette")
+    div(class="pure-u-lg-1-6")
+     p(class="pure-u-1") Click here to begin.
+     button(class="pure-u-1" type="button" class="pure-button") start

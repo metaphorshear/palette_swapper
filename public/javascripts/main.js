@@ -19,29 +19,9 @@ function d3lab(r, g, b) {
     }
 }
 
-/*
-function deltae00(rgb1, rgb2) {
-    //accepts d3.rgb objects
-    //apparently integers are faster than strings for this?
-    //I couldn't quite figure out how to make a Lab value into a single integer w/o error
-    //so here we are
-    let args = rgb1.r << 40 | rgb1.g << 32 | rgb1.b << 24 | rgb2.r << 16 | rgb2.g << 8 | rgb2.b
-    if (deltae00memo[args]) {
-        return deltae00memo[args];
-    }
-    else {
-        //as you might've guessed, this function originally took Lab colors
-        let lab1 = d3lab(rgb1.r, rgb1.g, rgb1.b);
-        let lab2 = d3lab(rgb2.r, rgb2.g, rgb2.b);
-        deltae00memo[args] = DeltaE.getDeltaE00(
-            { L: lab1.l, A: lab1.a, B: lab1.b }, { L: lab2.l, A: lab2.a, B: lab2.b });
-        return deltae00memo[args];
-    }
-}
-*/
-
 function drawImageFromFile() {
-    let canvas = document.getElementById('image_window');
+    let canvas = document.getElementById('image_before');
+    let canvasB = document.getElementById('image_after');
     let ctx = canvas.getContext('2d');
     let img = new Image();
     let curFile = document.getElementById("uploadImage").files[0];
@@ -49,18 +29,46 @@ function drawImageFromFile() {
     let src = url.createObjectURL(curFile);
     img.src = src;
     img.onload = function () {
-        canvas.width = this.width;
-        canvas.height = this.height;
-        ctx.drawImage(img, 0, 0);
-        //url.revokeObjectURL(src);
+        let width = this.width;
+        let height = this.height;
+        if (this.width > (window.screen.availWidth / 2)) {
+            width = Math.floor(window.screen.availWidth / 2) - 50;
+            ratio = width / this.width;
+            height = ratio * this.height;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvasB.width = width;
+        canvasB.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        url.revokeObjectURL(src);
     }
+}
+
+function drawPalette() {
+    //this should be called by paletteSetup
+    let canvas = document.getElementById('palette_display');
+    let ctx = canvas.getContext('2d');
+    let width = window.screen.availWidth * 0.75;
+    canvas.width = width;
+    let swatchSize = Math.ceil(width / currentPalette.length);
+    let rows = 1;
+    if (swatchSize < 20) {
+        swatchSize = 20;
+        rows = (swatchSize * currentPalette.length) / width;
+    }
+    canvas.height = Math.ceil(rows) * swatchSize;
+    _.each(currentPalette, function (swatch, index) {
+        ctx.fillStyle = swatch.toString();
+        ctx.fillRect((index * swatchSize) % width, Math.floor((index * swatchSize) / width)*swatchSize, swatchSize, swatchSize);
+    })
+
 }
 
 function paletteSetup() {
     if (skipFirstColor) {
         currentPalette = _.rest(currentPalette);
     }
-    //calculating this here speeds up the findNearestColor function considerably
     for (var i = 0; i < currentPalette.length; ++i) {
         let swatch = d3.color(currentPalette[i].toString());
         currentPalette[i].d3color = swatch;
@@ -68,6 +76,7 @@ function paletteSetup() {
     }
     //empty the nearestmemo cache; it assumes the current palette
     nearestmemo = {};
+    drawPalette();
 }
 
 function loadPaletteFromFile() {
@@ -94,31 +103,7 @@ function loadPaletteFromFile() {
         alert("The palette format is unsupported.");
     }
 }
-/*
-function findNearestColor(pixel, palette) {
-    //pixel: an array with three components
-    //palette: an array of objects
-    //this assumes the anypalette format, where each object contains properties for r, g, and b
-    //and also a toString method which returns a CSS Color Module Level 3 specifier string
-    //e.g., "rgb(255, 255, 255)"
 
-    let deltaEs = palette.map(function (color) {
-        //color is the object
-        let swatch = color.d3color;
-        //let labSwatch = color.lab;
-        //let labPixel = d3lab(pixel[0], pixel[1], pixel[2]);
-        let obj = {
-            color: swatch,
-            //deltaE: DeltaE.getDeltaE00( //bottleneck 2
-            //    { L: labSwatch.l, A: labSwatch.a, B: labSwatch.b }, { L: labPixel.l, A: labPixel.a, B: labPixel.b })
-            deltaE: deltae00(swatch, d3.rgb(pixel[0], pixel[1], pixel[2]))
-        };
-        return obj;
-    });
-    let result = _.min(deltaEs, _.iteratee('deltaE'));
-    return result;
-}
-*/
 function findNearestColor(pixel, palette) {
     //pixel: an array with three components
     //palette: an array of objects
@@ -147,12 +132,16 @@ function findNearestColor(pixel, palette) {
 }
 
 function swapColors() {
-    let canvas = document.getElementById('image_window');
-    let ctx = canvas.getContext('2d');
-    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let canvasA = document.getElementById('image_before');
+    let canvasB = document.getElementById('image_after');
+    let ctx = canvasB.getContext('2d');
+    ctx.drawImage(canvasA, 0, 0);
+    let imageData = ctx.getImageData(0, 0, canvasA.width, canvasA.height);
     let data = new Uint8ClampedArray(imageData.data);
     data.set(imageData.data);
     let t0 = performance.now();
+    //the next step is to try putting this in another thread so it won't hang up the browser
+    //also look into drawing the image a few times while it's working, so it will *seem* faster
     for (let i = 0; i < data.length; i += 4) {
         let color = findNearestColor([data[i], data[i + 1], data[i + 2]], currentPalette).color;
         data[i] = color.r;
@@ -162,8 +151,11 @@ function swapColors() {
     }
     let t1 = performance.now();
     console.log(`Time to swap colors of whole image: ${t1 - t0} ms`);
-    imageData.data.set(data);
-    ctx.putImageData(imageData, 0, 0);
+    
+    ctx = canvasB.getContext('2d');
+    let imageDataB = ctx.getImageData(0, 0, canvasB.width, canvasB.height);
+    imageDataB.data.set(data);
+    ctx.putImageData(imageDataB, 0, 0);
 }
 
 
