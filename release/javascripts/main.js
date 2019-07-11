@@ -3,11 +3,39 @@
 var currentPalette;
 var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
 var labmemo = {};
-var myWorker = new Worker('file:///./worker.js');
+//var worker = new Worker('worker.js');
 var loading;
-console.log(myWorker);
+console.log(worker);
 //var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
 var nearestmemo = {};
+
+function createWebWorkerFromFunction(f) {
+  var blobContents = ['(', f.toString(), ')();'];
+  var blob = new Blob(blobContents, { type: 'application/javascript'});
+  var blobUrl = URL.createObjectURL(blob);
+  var worker = new Worker(blobUrl);
+  URL.revokeObjectURL(blobUrl);
+  return worker;
+}
+
+function buildPath(file) {
+  var parts = document.location.href.split('/');
+  parts[parts.length - 1] = file;
+  return parts.join('/');
+}
+
+var worker = createWebWorkerFromFunction(function() {
+  self.onmessage = function(e) {
+    importScripts(...e.data.scriptUrls);
+    importScripts('https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
+  }
+});
+
+var workerUrl = buildPath('javascripts/worker.js');
+var includeUrl = buildPath('javascripts/deltae.global.min.js');
+
+worker.postMessage({ scriptUrls: [workerUrl, includeUrl] });
+
 
 function d3lab(r, g, b) {
     //r,g,b are integers from 0 to 255, as from ImageData
@@ -142,7 +170,7 @@ function swapColors() {
     let imageData = ctx.getImageData(0, 0, canvasA.width, canvasA.height);
     
     if (window.Worker) {
-        myWorker.postMessage([imageData.data, currentPalette]);
+        worker.postMessage([imageData.data, currentPalette]);
         console.log("message posted to worker");
         //document.getElementsByClassName('loader')[0].setAttribute("style", `display: block; position: absolute; left: 70%; top: 60%`)
     }
@@ -165,7 +193,7 @@ function swapColors() {
     }
 }
 
-myWorker.onmessage = function (e) {
+worker.onmessage = function (e) {
     let canvasB = document.getElementById('image_after');
     let ctx = canvasB.getContext('2d');
     let imageData = ctx.getImageData(0, 0, canvasB.width, canvasB.height);

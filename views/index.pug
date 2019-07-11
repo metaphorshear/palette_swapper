@@ -4,14 +4,14 @@ html
     title= title
     link(rel='stylesheet', href="https://unpkg.com/purecss@1.0.1/build/pure-min.css" integrity="sha384-oAOxQR6DkCoMliIh8yFnu25d7Eq/PHS21PClpwjOTeU2jRSq11vu66rf90/cZr47" crossorigin="anonymous")
     link(rel="stylesheet" href="https://unpkg.com/purecss@1.0.1/build/grids-responsive-min.css")
+    //link(rel="stylesheet" href="stylesheets/style.css")
     script(src="https://underscorejs.org/underscore-min.js")
     
     script(src="javascripts/anypalette.js")
 
     script(src="javascripts/deltae.global.min.js")
     script(src="https://d3js.org/d3-color.v1.min.js")
-    //script(src="d3-color-1.2.8/src/index.js", type="module")
-
+    
     script(src="javascripts/main.js")
     meta(name="viewport" content="width=device-width, initial-scale=1")
 
@@ -19,9 +19,11 @@ body
   div(class="pure-g" style="margin-left: 2em")
     div(class="pure-u-1")
       h1= title
-      p Welcome to #{title}
+      p Upload an image and palette below and click "start".  Processing may take a while, especially for larger palettes, but please be patient.
     div(class="pure-u-1-2")
       canvas(id="image_before" class="pure-img" style="margin: 1em")
+    //div(class="container")
+      //div(class="loader")
     div(class="pure-u-1-2")
       canvas(id="image_after" class="pure-img" style="margin: 1em")
     div(class="pure-u-1")
