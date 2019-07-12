@@ -3,7 +3,7 @@
 var currentPalette;
 var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
 var labmemo = {};
-var myWorker = new Worker('file:///./worker.js');
+var myWorker = new Worker('javascripts/worker.js');
 var loading;
 console.log(myWorker);
 //var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
@@ -163,6 +163,23 @@ function swapColors() {
         imageDataB.data.set(data);
         ctx.putImageData(imageDataB, 0, 0);
     }
+}
+
+function printStats() {
+    //to make this work right, I *might* need to clear nearestmemo on new images.  kind of depends
+    let counts = _.countBy(nearestmemo, function (obj) {
+        if (obj.deltaE <= 1) { return '1' }
+        else if (obj.deltaE <= 2) { return '1-2' }
+        else if (obj.deltaE <= 10) { return '2-10' }
+        else if (obj.deltaE <= 49) { return '10-49' }
+        else { return '50-100' }
+    });
+    let percents = Object.entries(counts).map(function (pair) {
+        let [key, value] = pair;
+        let percent = (value / Object.keys(nearestmemo).length) * 100.0;
+        return [key, percent];
+    });
+    console.log(percents);
 }
 
 myWorker.onmessage = function (e) {

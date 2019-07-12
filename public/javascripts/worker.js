@@ -1,4 +1,4 @@
-importScripts('file:///./deltae.global.min.js', 'https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
+importScripts('./deltae.global.min.js', 'https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
 
 //so, I was having trouble loading main.js, and, well
 //I guess I *could* put the functions I need in a module and just include it in both scripts
