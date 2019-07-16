@@ -1,5 +1,5 @@
 # palette_swapper
-The plan is for this to be all client-side, and all major computations take place in the browser.  I'm using node and Express for convenience, though.
+An application to test the coverage of palettes.  You can upload an image and a palette and click 'start' to see the colors in the image replaced by those of the palette.  Supported palette formats are at https://www.npmjs.com/package/anypalette.
 
 ## Libraries used
 * DeltaE from http://zschuessler.github.io/DeltaE/
