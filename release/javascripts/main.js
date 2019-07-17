@@ -61,8 +61,13 @@ function drawImageFromFile() {
     img.onload = function () {
         let width = this.width;
         let height = this.height;
-        if (this.width > (window.screen.availWidth / 2)) {
-            width = Math.floor(window.screen.availWidth / 2) - 50;
+        if (this.height > window.screen.availHeight) {
+            height = window.screen.availHeight - (window.screen.availHeight*0.2);
+            ratio = height / this.height;
+            width = ratio * this.width;
+        }
+        else if (this.width > (window.screen.availWidth / 2)) {
+            width = Math.floor(window.screen.availWidth / 2) - (window.screen.availWidth * 0.1);
             ratio = width / this.width;
             height = ratio * this.height;
         }
