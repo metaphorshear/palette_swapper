@@ -1,5 +1,7 @@
 # palette_swapper
-An application to test the coverage of palettes.  You can upload an image and a palette and click 'start' to see the colors in the image replaced by those of the palette.  Supported palette formats are at https://www.npmjs.com/package/anypalette.
+This is an application to test the coverage of palettes.  Choose an image and a palette file and click 'start'.  The colors in the image will be replaced by those in your palette.  Supported palette formats are at https://www.npmjs.com/package/anypalette.
+
+![Screenshot](https://raw.githubusercontent.com/metaphorshear/palette_swapper/assets/screenshot.png)
 
 ## Libraries used
 * DeltaE from http://zschuessler.github.io/DeltaE/
