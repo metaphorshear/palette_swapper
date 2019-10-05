@@ -194,8 +194,9 @@ function findNearestColor(pixel, palette) {
 function swapColors() {
     let canvasA = document.getElementById('image_before');
     let canvasB = document.getElementById('image_after');
-    
-    let ctx = canvasB.getContext('2d');
+	//we're always reading from the "before" image and writing to the "after" image
+    let ctx = canvasA.getContext('2d');
+
     //ctx.drawImage(canvasA, 0, 0);  //not necessary, but a matter of taste.  displays the original image on both sides before processing is done
     let imageData = ctx.getImageData(0, 0, canvasA.width, canvasA.height);
     
