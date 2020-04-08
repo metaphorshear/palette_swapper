@@ -9,6 +9,7 @@ var loading;
 console.log(worker);
 //var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
 var nearestmemo = {};
+var dithering = false;
 
 //this is a hack to let Web Workers run without needing a webserver
 //https://gist.github.com/walfie/a80c4432bcff70fb826d5d28158e9cc4
@@ -191,6 +192,18 @@ function findNearestColor(pixel, palette) {
     return result;
 }
 
+function ditherHelper(img, startIdx, multiplier, error){
+    //img: Uint8ClampedArray with imageData
+    //startIdx: int, index of a red component in an image
+    //multiplier: float
+    //error: { r: int, g: int, b: int }
+    if (startIdx < img.length){
+        img[startIdx] += error.r * multiplier;
+        img[startIdx+1] += error.g * multiplier;
+        img[startIdx+2] += error.b * multiplier;
+    }
+}
+
 function swapColors() {
     let canvasA = document.getElementById('image_before');
     let canvasB = document.getElementById('image_after');
@@ -202,7 +215,7 @@ function swapColors() {
     
     if (window.Worker) {
         //this is running in its own thread and won't hang the page (yay!)
-        worker.postMessage([imageData.data, currentPalette]);
+        worker.postMessage([imageData.data, currentPalette, canvasA.width, dithering]);
         console.log("message posted to worker");
 
         //I was experimenting with a loader image, but it hasn't worked out so far
@@ -212,13 +225,42 @@ function swapColors() {
         //it sucks if we get down here.  bigger image/palette combinations will take a while, and the browser will complain.
         //this is mostly the same code as in the worker.  I could not figure out a solution besides copying it.
         let data = new Uint8ClampedArray(imageData.data);
-        data.set(imageData.data);
+        data.set(imageData.data); //real talk: I forget what this line does exactly.  it might be redundant.
         let t0 = performance.now();
         for (let i = 0; i < data.length; i += 4) {
             let color = findNearestColor([data[i], data[i + 1], data[i + 2]], currentPalette).color;
+            //store the error so we can dither
+            let pixerror = {}; 
+            pixerror.r = data[i] - color.r;
+            pixerror.g = data[i + 1] - color.g;
+            pixerror.b = data[i + 2] - color.b;
+        
+            //this is just setting the pixel to whatever color
             data[i] = color.r;
             data[i + 1] = color.g;
             data[i + 2] = color.b;
+            
+            if (dithering){
+                //need to adjust the pixel to the right of this one, and the three pixels below it
+                //(* is pixel to change, . is this pixel)
+                //  . *
+                //* * *
+                //make sure this pixel is really on the right
+                if ( Math.floor((i+4)/width) == Math.floor(i/width ) ){
+                    ditherHelper(data, i+4, 7/16, pixerror);
+                }
+    
+                let below = i + width;
+                ditherHelper(data, below, 5/16, pixerror);
+    
+                if ( Math.floor(below/width) == Math.floor((below-4)/width) ){
+                    ditherHelper(data, below-4, 3/16, pixerror);
+                }
+                
+                if ( Math.floor(below/width) == Math.floor((below+4)/width) ){
+                    ditherHelper(data, below+4, 1/16, pixerror);
+                }
+            }
         }
         let t1 = performance.now();
         console.log(`Time to swap colors of whole image: ${t1 - t0} ms`); //probably a lot

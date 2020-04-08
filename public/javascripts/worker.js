@@ -47,14 +47,59 @@ function findNearestColor(pixel, palette) {
     return result;
 }
 
+function ditherHelper(img, startIdx, multiplier, error){
+    //img: Uint8ClampedArray with imageData
+    //startIdx: int, index of a red component in an image
+    //multiplier: float
+    //error: { r: int, g: int, b: int }
+    if (startIdx < img.length){
+        img[startIdx] += (error.r * multiplier);
+        img[startIdx+1] += (error.g * multiplier);
+        img[startIdx+2] += (error.b * multiplier);
+    }
+}
+
 onmessage = function (e) {
     let data = new Uint8ClampedArray(e.data[0]);
     data.set(e.data[0]);
+    let width = e.data[2];
+    let dithering = e.data[3];
     for (let i = 0; i < data.length; i += 4) {
         let color = findNearestColor([data[i], data[i + 1], data[i + 2]], e.data[1]).color;
+        //store the error so we can dither
+        let pixerror = {};
+        pixerror.r = data[i] - color.r;
+        pixerror.g = data[i + 1] - color.g;
+        pixerror.b = data[i + 2] - color.b;
+
+        //this is just setting the pixel to whatever color
         data[i] = color.r;
         data[i + 1] = color.g;
         data[i + 2] = color.b;
+        
+
+        if (dithering){
+            //need to adjust the pixel to the right of this one, and the three pixels below it
+            //(* is pixel to change, . is this pixel)
+            //  . *
+            //* * *
+
+            //check if this pixel is really on the right
+            if ( Math.floor((i+4)/width) == Math.floor(i/width ) ){
+                ditherHelper(data, i+4, 7/16, pixerror);
+            }
+
+            let below = i + width;
+            ditherHelper(data, below, 5/16, pixerror);
+
+            if ( Math.floor(below/width) == Math.floor((below-4)/width) ){
+                ditherHelper(data, below-4, 3/16, pixerror);
+            }
+            
+            if ( Math.floor(below/width) == Math.floor((below+4)/width) ){
+                ditherHelper(data, below+4, 1/16, pixerror);
+            }
+        }
     }
     postMessage([data, nearestmemo]);
 }

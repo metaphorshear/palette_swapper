@@ -13,5 +13,7 @@
     "morgan": "~1.9.1",
     "pug": "2.0.0-beta11"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "jest": "^24.8.0"
+  }
 }

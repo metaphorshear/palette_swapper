@@ -8,6 +8,7 @@ var loading;
 console.log(myWorker);
 //var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
 var nearestmemo = {};
+var dithering = false;
 
 function d3lab(r, g, b) {
     //r,g,b are integers from 0 to 255, as from ImageData
@@ -31,6 +32,7 @@ function drawImageFromFile() {
     let src = url.createObjectURL(curFile);
     img.src = src;
     img.onload = function () {
+        //scale the image to fit the window
         let width = this.width;
         let height = this.height;
         if (this.height > window.screen.availHeight) {
@@ -47,6 +49,7 @@ function drawImageFromFile() {
         canvas.height = height;
         canvasB.width = width;
         canvasB.height = height;
+        //draw
         ctx.drawImage(img, 0, 0, width, height);
         url.revokeObjectURL(src);
         canvasB.getContext('2d').drawImage(canvas, 0, 0); //this copies the image to the right before processing happens.  it's not necessary, but I kind of like it.
@@ -139,6 +142,17 @@ function findNearestColor(pixel, palette) {
     return result;
 }
 
+function ditherHelper(img, startIdx, multiplier, error){
+    //img: Uint8ClampedArray with imageData
+    //startIdx: int, index of a red component in an image
+    //multiplier: float
+    //error: { r: int, g: int, b: int }
+    if (startIdx < img.length){
+        img[startIdx] += error.r * multiplier;
+        img[startIdx+1] += error.g * multiplier;
+        img[startIdx+2] += error.b * multiplier;
+    }
+}
 function swapColors() {
     let canvasA = document.getElementById('image_before');
     let canvasB = document.getElementById('image_after');
@@ -147,7 +161,7 @@ function swapColors() {
     let imageData = ctx.getImageData(0, 0, canvasA.width, canvasA.height);
     
     if (window.Worker) {
-        myWorker.postMessage([imageData.data, currentPalette]);
+        myWorker.postMessage([imageData.data, currentPalette, canvasA.width, dithering]);
         console.log("message posted to worker");
         //document.getElementsByClassName('loader')[0].setAttribute("style", `display: block; position: absolute; left: 70%; top: 60%`)
     }
@@ -157,9 +171,38 @@ function swapColors() {
         let t0 = performance.now();
         for (let i = 0; i < data.length; i += 4) {
             let color = findNearestColor([data[i], data[i + 1], data[i + 2]], currentPalette).color;
+             //store the error so we can dither
+             let pixerror = {}; 
+             pixerror.r = data[i] - color.r;
+             pixerror.g = data[i + 1] - color.g;
+             pixerror.b = data[i + 2] - color.b;
+         
+             //this is just setting the pixel to whatever color
             data[i] = color.r;
             data[i + 1] = color.g;
             data[i + 2] = color.b;
+            
+            if (dithering){
+                //need to adjust the pixel to the right of this one, and the three pixels below it
+                //(* is pixel to change, . is this pixel)
+                //  . *
+                //* * *
+                //make sure this pixel is really on the right
+                if ( Math.floor((i+4)/width) == Math.floor(i/width ) ){
+                    ditherHelper(data, i+4, 7/16, pixerror);
+                }
+    
+                let below = i + width;
+                ditherHelper(data, below, 5/16, pixerror);
+    
+                if ( Math.floor(below/width) == Math.floor((below-4)/width) ){
+                    ditherHelper(data, below-4, 3/16, pixerror);
+                }
+                
+                if ( Math.floor(below/width) == Math.floor((below+4)/width) ){
+                    ditherHelper(data, below+4, 1/16, pixerror);
+                }
+            }
         }
         let t1 = performance.now();
         console.log(`Time to swap colors of whole image: ${t1 - t0} ms`);
