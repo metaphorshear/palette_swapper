@@ -1,8 +1,10 @@
+import {d3lab} from "./shared.mjs";
+
 //globals
 
 var currentPalette;
 var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
-var labmemo = {};
+
 //the following line is uncommented in the server-side version
 //var worker = new Worker('worker.js');
 var loading;
@@ -31,28 +33,15 @@ function buildPath(file) {
 var worker = createWebWorkerFromFunction(function() {
   self.onmessage = function(e) {
     importScripts(...e.data.scriptUrls);
-    importScripts('https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
+    importScripts('./d3-color.js', './underscore-min.js');
   }
 });
 
-var workerUrl = buildPath('javascripts/worker.js');
-var includeUrl = buildPath('javascripts/deltae.global.min.js');
+var workerUrl = buildPath('./worker.js');
+var includeUrl = buildPath('./deltae.global.min.js');
 
 worker.postMessage({ scriptUrls: [workerUrl, includeUrl] });
 //end client-side Web Worker hack
-
-
-function d3lab(r, g, b) {
-    //r,g,b are integers from 0 to 255, as from ImageData
-    let color = r << 16 | g << 8 | b;
-    if (labmemo[color]) {
-        return labmemo[color];
-    }
-    else {
-        labmemo[color] = d3.lab(d3.rgb(r, g, b));
-        return labmemo[color];
-    }
-}
 
 function drawImageFromFile() {
     //this is the original image
@@ -289,3 +278,5 @@ window.onload = function () {
     document.getElementById("uploadPalette").addEventListener("change", loadPaletteFromFile, false);
     document.getElementsByTagName("button")[0].addEventListener("click", swapColors, false);
 }
+
+module.exports = {d3lab}

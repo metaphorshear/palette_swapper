@@ -1,0 +1,15 @@
+{
+  "name": "palette_swapper_tests",
+  "version": "1.0.0",
+  "description": "tests for palette_swapper",
+  "license": "ISC",
+  "author": "Chara Moradian",
+  "type": "module",
+  "main": "",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "dependencies": {
+    "jest": "^30.2.0"
+  }
+}
