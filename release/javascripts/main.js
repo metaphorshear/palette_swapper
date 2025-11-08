@@ -278,5 +278,3 @@ window.onload = function () {
     document.getElementById("uploadPalette").addEventListener("change", loadPaletteFromFile, false);
     document.getElementsByTagName("button")[0].addEventListener("click", swapColors, false);
 }
-
-module.exports = {d3lab}
