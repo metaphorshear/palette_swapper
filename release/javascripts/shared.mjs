@@ -1,5 +1,14 @@
 import * as d3 from "./d3.v7.js";
-import * as DeltaE from "./deltae.global.min.js"
+//this needs to be here for tests, but it breaks it in browser
+/*var DeltaE;
+var _;
+if (process.env.NODE_ENV !== undefined){
+    DeltaE = await import("./deltae.global.min.js");
+    _ = await import("./underscore-min.js");
+}
+*/
+//import DeltaE from "./deltae.global.min.js";
+//import _ from "./underscore-min.js";
 
 var labmemo = {};
 export var nearestmemo = {};

@@ -8,11 +8,32 @@ test('white in lab', ()=> {
 //need to finish setting up this test; it needs slightly different parameters
 test('nearest color equals self if in palette', ()=> {
     expect(findNearestColor([255, 255, 255],
- [{"r": "255", "g": "255", "b": "255", "name": "white"},])).toBe(
-    {
+ [{"r": "255",
+   "g": "255",
+   "b": "255", 
+   "name": "white",
+   "d3color": {
         "r": "255",
         "g": "255",
         "b": "255",
         "opacity": 1
+    },
+    "lab": {
+        "l": 100,
+        "a": 0,
+        "b": 0,
+        "opacity": 1
+    }
+
+ },]
+)
+).toMatchObject(
+    {"color": {
+        "r": "255",
+        "g": "255",
+        "b": "255",
+        "opacity": 1
+    },
+    "deltaE": 0
     })
 });
