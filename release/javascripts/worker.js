@@ -1,9 +1,8 @@
 //importScripts('https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
 
-//to load the following code as a module, I would need to make this worker a module.
-//I might attempt this, but not yet.  I might need importScripts for the client-side hack.
-//then again, for all I know, there's no longer a need for it.
+//still trying to figure out how to replace code with a module
 
+//import("./shared.mjs");
 var nearestmemo = {};
 var labmemo = {};
 
@@ -18,7 +17,6 @@ function d3lab(r, g, b) {
         return labmemo[color];
     }
 }
-
 
 function findNearestColor(pixel, palette) {
     //pixel: an array with three components
@@ -46,6 +44,7 @@ function findNearestColor(pixel, palette) {
     nearestmemo[key] = result;
     return result;
 }
+
 
 function ditherHelper(img, startIdx, multiplier, error){
     //img: Uint8ClampedArray with imageData

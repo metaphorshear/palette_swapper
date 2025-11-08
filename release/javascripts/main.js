@@ -1,7 +1,7 @@
-import {d3lab} from "./shared.mjs";
+import {d3lab, nearestmemo, findNearestColor} from "./shared.mjs";
 
 //globals
-
+var nearestmemoa = nearestmemo;
 var currentPalette;
 var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
 
@@ -10,7 +10,7 @@ var skipFirstColor = true; //skip the first color in a palette, assuming it is a
 var loading;
 console.log(worker);
 //var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
-var nearestmemo = {};
+
 var dithering = false;
 
 //this is a hack to let Web Workers run without needing a webserver
@@ -41,7 +41,10 @@ var includeUrl = buildPath('javascripts/deltae.global.min.js');
 var d3colorUrl = buildPath('javascripts/d3-color.js');
 var underscoreUrl = buildPath('javascripts/underscore-min.js');
 
-worker.postMessage({ scriptUrls: [workerUrl, includeUrl, d3colorUrl, underscoreUrl] });
+worker.postMessage({ scriptUrls: [
+    workerUrl, includeUrl, 
+    d3colorUrl, underscoreUrl
+] });
 //end client-side Web Worker hack
 
 function drawImageFromFile() {
@@ -118,7 +121,7 @@ function paletteSetup() {
         currentPalette[i].lab = d3.lab(swatch);
     }
     //empty the nearestmemo cache; it assumes the current palette
-    nearestmemo = {};
+    nearestmemoa = {};
     drawPalette();
 }
 
@@ -148,38 +151,6 @@ function loadPaletteFromFile() {
     else {
         alert("The palette format is unsupported.");
     }
-}
-
-function findNearestColor(pixel, palette) {
-    //pixel: an array with three components (representing the colors of a pixel)
-    //palette: an array of objects
-    //this assumes the anypalette format, where each object contains properties for r, g, and b
-    //and also a toString method which returns a CSS Color Module Level 3 specifier string
-    //e.g., "rgb(255, 255, 255)"
-
-    let key = pixel[0] << 16 | pixel[1] << 8 | pixel[2];
-    //this function is memoized, and its results are cached in nearestmemo
-    if (nearestmemo[key]) {
-        return nearestmemo[key];
-    }
-    let deltaEs = palette.map(function (color) {
-        //color is a palette swatch object
-        let swatch = color.d3color;
-        let labSwatch = color.lab;
-        let labPixel = d3lab(pixel[0], pixel[1], pixel[2]);
-        let obj = {
-            color: swatch,
-            //this is the part of the code that takes the longest
-            //it finds the distance between the color of this pixel and the color of the current palette swatch
-            deltaE: DeltaE.getDeltaE00(
-                { L: labSwatch.l, A: labSwatch.a, B: labSwatch.b }, { L: labPixel.l, A: labPixel.a, B: labPixel.b })
-        };
-        return obj;
-    });
-    //this part actually finds the nearest color, by finding the minimum distance
-    let result = _.min(deltaEs, _.iteratee('deltaE'));
-    nearestmemo[key] = result;
-    return result;
 }
 
 function ditherHelper(img, startIdx, multiplier, error){
@@ -268,7 +239,7 @@ worker.onmessage = function (e) {
     imageData.data.set(e.data[0]);
     ctx.putImageData(imageData, 0, 0);
      //since the Web Worker doesn't have access to nearestmemo, its copied back and forth between the threads
-    nearestmemo = e.data[1];
+    nearestmemoa = e.data[1];
     //document.getElementsByClassName('loader')[0].setAttribute("style", "display: none");
     console.log("message received from worker");
 }
