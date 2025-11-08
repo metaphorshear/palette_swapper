@@ -1,8 +1,8 @@
-//importScripts(filename, 'https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
+//importScripts('https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
 
-//so, I was having trouble loading main.js, and, well
-//I guess I *could* put the functions I need in a module and just include it in both scripts
-//maybe later
+//to load the following code as a module, I would need to make this worker a module.
+//I might attempt this, but not yet.  I might need importScripts for the client-side hack.
+//then again, for all I know, there's no longer a need for it.
 
 var nearestmemo = {};
 var labmemo = {};
