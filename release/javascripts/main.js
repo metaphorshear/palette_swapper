@@ -33,12 +33,12 @@ function buildPath(file) {
 var worker = createWebWorkerFromFunction(function() {
   self.onmessage = function(e) {
     importScripts(...e.data.scriptUrls);
-    importScripts('./d3-color.js', './underscore-min.js');
-  }
+    importScripts('https://d3js.org/d3-color.v1.min.js', 'https://underscorejs.org/underscore-min.js');
+  }  //these have to be live URLs, not local files.  using these to support the client-side version.
 });
 
-var workerUrl = buildPath('./worker.js');
-var includeUrl = buildPath('./deltae.global.min.js');
+var workerUrl = buildPath('javascripts/worker.js');
+var includeUrl = buildPath('javascripts/deltae.global.min.js');
 
 worker.postMessage({ scriptUrls: [workerUrl, includeUrl] });
 //end client-side Web Worker hack
