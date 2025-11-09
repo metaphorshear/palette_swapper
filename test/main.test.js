@@ -37,3 +37,13 @@ test('nearest color equals self if in palette', ()=> {
     "deltaE": 0
     })
 });
+
+/* tests to add:
+1. test that palette is loaded
+2. test that palette images are loaded
+3. test that images are loaded
+4. test that image on the right changes
+5. test that image on the left doesn't change
+6. test that new image can be loaded
+7. test that new palette can be loaded
+*/

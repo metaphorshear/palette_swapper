@@ -47,6 +47,23 @@ worker.postMessage({ scriptUrls: [
 ] });
 //end client-side Web Worker hack
 
+function scaleImage(img) {
+    let width = img.width;
+    let height = img.height;
+    let ratio;
+    if (img.height > window.screen.availHeight) {
+        height = window.screen.availHeight - (window.screen.availHeight*0.2);
+        ratio = height / img.height;
+        width = ratio * img.width;
+    }
+    else if (img.width > (window.screen.availWidth / 2)) {
+        width = Math.floor(window.screen.availWidth / 2) - (window.screen.availWidth * 0.1);
+        ratio = width / img.width;
+        height = ratio * img.height;
+    }
+    return [width, height]
+}
+
 function drawImageFromFile() {
     //this is the original image
     let canvas = document.getElementById('image_before');
@@ -61,23 +78,11 @@ function drawImageFromFile() {
     let src = url.createObjectURL(curFile);
     img.src = src;
     img.onload = function () {
-        //scale the images so they don't go off the screen
-        let width = this.width;
-        let height = this.height;
-        if (this.height > window.screen.availHeight) {
-            height = window.screen.availHeight - (window.screen.availHeight*0.2);
-            ratio = height / this.height;
-            width = ratio * this.width;
-        }
-        else if (this.width > (window.screen.availWidth / 2)) {
-            width = Math.floor(window.screen.availWidth / 2) - (window.screen.availWidth * 0.1);
-            ratio = width / this.width;
-            height = ratio * this.height;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        canvasB.width = width;
-        canvasB.height = height;
+        let width;
+        let height;
+        [width, height] = scaleImage(img);
+        [canvas.width, canvas.height, canvasB.width, canvasB.height] =
+        [width, height, width, height]
         //draw
         ctx.drawImage(img, 0, 0, width, height);
         url.revokeObjectURL(src);
@@ -244,7 +249,6 @@ worker.onmessage = function (e) {
     console.log("message received from worker");
 }
 
-//not sure yet if these are the functions I want bound to these listeners.  but I guess that can wait.
 window.onload = function () {
     document.getElementById("uploadImage").addEventListener("change", drawImageFromFile, false);
     document.getElementById("uploadPalette").addEventListener("change", loadPaletteFromFile, false);
