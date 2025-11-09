@@ -1,14 +1,15 @@
 import * as d3 from "./d3.v7.js";
-//this needs to be here for tests, but it breaks it in browser
-/*var DeltaE;
+
+//conditionally load libraries, since they're needed for testing but break the browser app
+var DeltaE;
 var _;
-if (process.env.NODE_ENV !== undefined){
-    DeltaE = await import("./deltae.global.min.js");
-    _ = await import("./underscore-min.js");
+if (typeof process !== 'undefined' && process.env.NODE_ENV !== undefined){
+    var tmp;
+    tmp = await import("./deltae.global.min.js");
+    DeltaE = tmp.default;
+    tmp = await import("./underscore-min.js");
+    _ = tmp.default;
 }
-*/
-//import DeltaE from "./deltae.global.min.js";
-//import _ from "./underscore-min.js";
 
 var labmemo = {};
 export var nearestmemo = {};
