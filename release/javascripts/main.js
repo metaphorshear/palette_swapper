@@ -1,4 +1,4 @@
-import {d3lab, nearestmemo, findNearestColor} from "./shared.mjs";
+import {nearestmemo, findNearestColor} from "./shared.mjs";
 
 //globals
 var nearestmemoa = nearestmemo;
@@ -254,3 +254,4 @@ window.onload = function () {
     document.getElementById("uploadPalette").addEventListener("change", loadPaletteFromFile, false);
     document.getElementsByTagName("button")[0].addEventListener("click", swapColors, false);
 }
+export {loadPaletteFromFile}

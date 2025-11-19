@@ -1,4 +1,5 @@
 import {d3lab, findNearestColor} from '../release/javascripts/shared.mjs';
+import { loadPaletteFromFile } from '../release/javascripts/main';
 
 test('white in lab', ()=> {
     expect(d3lab(255, 255, 255).l).toBe(100)
@@ -37,6 +38,13 @@ test('nearest color equals self if in palette', ()=> {
     "deltaE": 0
     })
 });
+/* //test that palette is loaded into currentPalette.
+// possibly refactor currentPalette to return a loaded palette instead of using globals
+// maybe make it take a file, too
+var currentPalette;
+test('palette loaded from file', ()=> {
+    
+}*/
 
 /* tests to add:
 1. test that palette is loaded

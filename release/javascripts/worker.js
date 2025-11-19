@@ -18,7 +18,7 @@ function d3lab(r, g, b) {
     }
 }
 
-function findNearestColor(pixel, palette) {
+function findNearestColor(pixel, palette, formula=DeltaE.getDeltaE00) {
     //pixel: an array with three components
     //palette: an array of objects
     //this assumes the anypalette format, where each object contains properties for r, g, and b
@@ -35,7 +35,7 @@ function findNearestColor(pixel, palette) {
         let labPixel = d3lab(pixel[0], pixel[1], pixel[2]);
         let obj = {
             color: swatch,
-            deltaE: DeltaE.getDeltaE00(
+            deltaE: formula(
                 { L: labSwatch.l, A: labSwatch.a, B: labSwatch.b }, { L: labPixel.l, A: labPixel.a, B: labPixel.b })
         };
         return obj;
