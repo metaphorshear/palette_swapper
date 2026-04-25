@@ -1,28 +1,12 @@
-import {nearestmemo, findNearestColor} from "./shared.mjs";
+import {nearestmemo, findNearestColor, d3lab, ditherHelper, loadPaletteFromFile} from "./shared.mjs";
 
 //globals
 var nearestmemoa = nearestmemo;
 var currentPalette;
 var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
 
-//the following line is uncommented in the server-side version
-//var worker = new Worker('worker.js');
 var loading;
-console.log(worker);
-//var deltae00memo = {}; //might add a selector so that users can try the other delta E formulas
-
 var dithering = false;
-
-//this is a hack to let Web Workers run without needing a webserver
-//https://gist.github.com/walfie/a80c4432bcff70fb826d5d28158e9cc4
-function createWebWorkerFromFunction(f) {
-  var blobContents = ['(', f.toString(), ')();'];
-  var blob = new Blob(blobContents, { type: 'application/javascript'});
-  var blobUrl = URL.createObjectURL(blob);
-  var worker = new Worker(blobUrl);
-  URL.revokeObjectURL(blobUrl);
-  return worker;
-}
 
 function buildPath(file) {
   var parts = document.location.href.split('/');
@@ -30,21 +14,63 @@ function buildPath(file) {
   return parts.join('/');
 }
 
-var worker = createWebWorkerFromFunction(function() {
-  self.onmessage = function(e) {
-    importScripts(...e.data.scriptUrls);
-  }
-});
+//this function runs inside the worker blob; it references findNearestColor, ditherHelper,
+//and nearestmemo which are injected into the blob scope via .toString() serialization below
+function workerImageProcess(e) {
+    if (e.data.scriptUrls) {
+        importScripts(...e.data.scriptUrls);
+        return;
+    }
+    var data = new Uint8ClampedArray(e.data[0]);
+    data.set(e.data[0]);
+    var width = e.data[2];
+    var dithering = e.data[3];
+    for (var i = 0; i < data.length; i += 4) {
+        var color = findNearestColor([data[i], data[i+1], data[i+2]], e.data[1]).color;
+        var pixerror = {r: data[i]-color.r, g: data[i+1]-color.g, b: data[i+2]-color.b};
+        data[i] = color.r;
+        data[i+1] = color.g;
+        data[i+2] = color.b;
+        if (dithering) {
+            if (Math.floor((i+4)/width) == Math.floor(i/width))
+                ditherHelper(data, i+4, 7/16, pixerror);
+            var below = i + width;
+            ditherHelper(data, below, 5/16, pixerror);
+            if (Math.floor(below/width) == Math.floor((below-4)/width))
+                ditherHelper(data, below-4, 3/16, pixerror);
+            if (Math.floor(below/width) == Math.floor((below+4)/width))
+                ditherHelper(data, below+4, 1/16, pixerror);
+        }
+    }
+    postMessage([data, nearestmemo]);
+}
 
-var workerUrl = buildPath('javascripts/worker.js');
+//this is a hack to let Web Workers run without needing a webserver
+//https://gist.github.com/walfie/a80c4432bcff70fb826d5d28158e9cc4
+//shared functions are serialized via .toString() so worker.js is no longer needed
+var worker = (function() {
+    var blobSrc = [
+        '(function(){',
+        'var labmemo={};',
+        'var nearestmemo={};',
+        d3lab.toString() + ';',
+        findNearestColor.toString() + ';',
+        ditherHelper.toString() + ';',
+        'onmessage=' + workerImageProcess.toString() + ';',
+        '})();'
+    ].join('\n');
+    var blob = new Blob([blobSrc], {type: 'application/javascript'});
+    var blobUrl = URL.createObjectURL(blob);
+    var w = new Worker(blobUrl);
+    URL.revokeObjectURL(blobUrl);
+    return w;
+})();
+
 var includeUrl = buildPath('javascripts/deltae.global.min.js');
 var d3colorUrl = buildPath('javascripts/d3-color.js');
 var underscoreUrl = buildPath('javascripts/underscore-min.js');
 
-worker.postMessage({ scriptUrls: [
-    workerUrl, includeUrl, 
-    d3colorUrl, underscoreUrl
-] });
+worker.postMessage({ scriptUrls: [includeUrl, d3colorUrl, underscoreUrl] });
 //end client-side Web Worker hack
 
 function scaleImage(img) {
@@ -136,46 +162,19 @@ function paletteSetup() {
     drawPalette();
 }
 
-function loadPaletteFromFile() {
-    //this is pretty similar to drawImageFromFile, but with palettes
-    let file = document.getElementById("uploadPalette").files[0];
-    //only the file extension is checked; i.e., it might be a valid file but need renaming
-    let supportedByAnypalette = ['pal', 'gpl', 'aco', 'ase',
-         'txt','psppalette', 'hpl', 'cs', 'wpe', 'sketchpalette',
-         'spl', 'soc', 'colors', 'theme', 'themepack',
-         'css', 'scss', 'styl',
-         'html', 'svg', 'js'
-    ]; //I worry about supporting some of these.
-    if (supportedByAnypalette.includes(_.last(file.name.split('.')))) {
-        AnyPalette.loadPalette(file, function (error, palette) {
-            if (palette) {
-                currentPalette = palette;
-                paletteSetup();
-            }
-            else if (error) {
-                alert(error);
-            }
-                //this would mean that AnyPalette didn't catch an error, but also didn't return a palette
-            else {
-                alert("Something has gone horribly wrong.");
-            }
-        });
-    }
-    else {
-        alert("The palette format is unsupported.");
-    }
-}
-
-function ditherHelper(img, startIdx, multiplier, error){
-    //img: Uint8ClampedArray with imageData
-    //startIdx: int, index of a red component in an image
-    //multiplier: float
-    //error: { r: int, g: int, b: int }
-    if (startIdx < img.length){
-        img[startIdx] += error.r * multiplier;
-        img[startIdx+1] += error.g * multiplier;
-        img[startIdx+2] += error.b * multiplier;
-    }
+const loadPalette = () => {
+    loadPaletteFromFile(document.getElementById("uploadPalette").files[0], function(error, palette) {
+        if (palette) {
+            currentPalette = palette;
+            paletteSetup();
+        }
+        else if (error) {
+            alert(error);
+        }
+        else {
+            alert("Something has gone horribly wrong.");
+        }
+    });
 }
 
 function swapColors() {
@@ -187,7 +186,7 @@ function swapColors() {
 
     //ctx.drawImage(canvasA, 0, 0);  //not necessary, but a matter of taste.  displays the original image on both sides before processing is done
     let imageData = ctx.getImageData(0, 0, canvasA.width, canvasA.height);
-    
+
     if (window.Worker) {
         //this is running in its own thread and won't hang the page (yay!)
         worker.postMessage([imageData.data, currentPalette, canvasA.width, dithering]);
@@ -198,23 +197,22 @@ function swapColors() {
     }
     else {
         //it sucks if we get down here.  bigger image/palette combinations will take a while, and the browser will complain.
-        //this is mostly the same code as in the worker.  I could not figure out a solution besides copying it.
         let data = new Uint8ClampedArray(imageData.data);
         data.set(imageData.data); //real talk: I forget what this line does exactly.  it might be redundant.
         let t0 = performance.now();
         for (let i = 0; i < data.length; i += 4) {
             let color = findNearestColor([data[i], data[i + 1], data[i + 2]], currentPalette).color;
             //store the error so we can dither
-            let pixerror = {}; 
+            let pixerror = {};
             pixerror.r = data[i] - color.r;
             pixerror.g = data[i + 1] - color.g;
             pixerror.b = data[i + 2] - color.b;
-        
+
             //this is just setting the pixel to whatever color
             data[i] = color.r;
             data[i + 1] = color.g;
             data[i + 2] = color.b;
-            
+
             if (dithering){
                 //need to adjust the pixel to the right of this one, and the three pixels below it
                 //(* is pixel to change, . is this pixel)
@@ -224,14 +222,14 @@ function swapColors() {
                 if ( Math.floor((i+4)/width) == Math.floor(i/width ) ){
                     ditherHelper(data, i+4, 7/16, pixerror);
                 }
-    
+
                 let below = i + width;
                 ditherHelper(data, below, 5/16, pixerror);
-    
+
                 if ( Math.floor(below/width) == Math.floor((below-4)/width) ){
                     ditherHelper(data, below-4, 3/16, pixerror);
                 }
-                
+
                 if ( Math.floor(below/width) == Math.floor((below+4)/width) ){
                     ditherHelper(data, below+4, 1/16, pixerror);
                 }
@@ -262,7 +260,6 @@ worker.onmessage = function (e) {
 
 window.onload = function () {
     document.getElementById("uploadImage").addEventListener("change", drawImageFromFile, false);
-    document.getElementById("uploadPalette").addEventListener("change", loadPaletteFromFile, false);
+    document.getElementById("uploadPalette").addEventListener("change", loadPalette, false);
     document.getElementsByTagName("button")[0].addEventListener("click", swapColors, false);
 }
-export {loadPaletteFromFile}

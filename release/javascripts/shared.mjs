@@ -3,12 +3,15 @@ import * as d3 from "./d3.v7.js";
 //conditionally load libraries, since they're needed for testing but break the browser app
 var DeltaE;
 var _;
+var AnyPalette;
 if (typeof process !== 'undefined' && process.env.NODE_ENV !== undefined){
     var tmp;
     tmp = await import("./deltae.global.min.js");
     DeltaE = tmp.default;
     tmp = await import("./underscore-min.js");
     _ = tmp.default;
+    tmp = await import("./anypalette.js");
+    AnyPalette = tmp.default;
 }
 
 var labmemo = {};
@@ -58,4 +61,32 @@ function findNearestColor(pixel, palette) {
     return result;
 }
 
-export {d3lab, findNearestColor};
+function ditherHelper(img, startIdx, multiplier, error) {
+    //img: Uint8ClampedArray with imageData
+    //startIdx: int, index of a red component in an image
+    //multiplier: float
+    //error: { r: int, g: int, b: int }
+    if (startIdx < img.length) {
+        img[startIdx] += error.r * multiplier;
+        img[startIdx+1] += error.g * multiplier;
+        img[startIdx+2] += error.b * multiplier;
+    }
+}
+
+function loadPaletteFromFile(file, onLoad) {
+    //only the file extension is checked; i.e., it might be a valid file but need renaming
+    const supportedByAnypalette = ['pal', 'gpl', 'aco', 'ase',
+         'txt','psppalette', 'hpl', 'cs', 'wpe', 'sketchpalette',
+         'spl', 'soc', 'colors', 'theme', 'themepack',
+         'css', 'scss', 'styl',
+         'html', 'svg', 'js'
+    ]; //I worry about supporting some of these.
+    if (supportedByAnypalette.includes(_.last(file.name.split('.')))) {
+        AnyPalette.loadPalette(file, onLoad);
+    }
+    else {
+        onLoad(new Error("The palette format is unsupported."), null);
+    }
+}
+
+export {d3lab, findNearestColor, ditherHelper, loadPaletteFromFile};
