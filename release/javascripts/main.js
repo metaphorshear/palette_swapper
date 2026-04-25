@@ -1,12 +1,66 @@
-import {nearestmemo, findNearestColor, d3lab, ditherHelper, loadPaletteFromFile} from "./shared.mjs";
-
-//globals
+var labmemo = {};
+var nearestmemo = {};
 var nearestmemoa = nearestmemo;
 var currentPalette;
 var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
 
 var loading;
 var dithering = false;
+
+function d3lab(r, g, b) {
+    //r,g,b are integers from 0 to 255, as from ImageData
+    let color = r << 16 | g << 8 | b;
+    if (labmemo[color]) {
+        return labmemo[color];
+    }
+    else {
+        labmemo[color] = d3.lab(d3.rgb(r, g, b));
+        return labmemo[color];
+    }
+}
+
+function findNearestColor(pixel, palette) {
+    //pixel: an array with three components (representing the colors of a pixel)
+    //palette: an array of objects
+    //this assumes the anypalette format, where each object contains properties for r, g, and b
+    //and also a toString method which returns a CSS Color Module Level 3 specifier string
+    //e.g., "rgb(255, 255, 255)"
+    let key = pixel[0] << 16 | pixel[1] << 8 | pixel[2];
+    //this function is memoized, and its results are cached in nearestmemo
+    if (nearestmemo[key]) {
+        return nearestmemo[key];
+    }
+    let deltaEs = palette.map(function (color) {
+        //color is a palette swatch object
+        let swatch = color.d3color;
+        let labSwatch = color.lab;
+        let labPixel = d3lab(pixel[0], pixel[1], pixel[2]);
+        let obj = {
+            color: swatch,
+            //this is the part of the code that takes the longest
+            //it finds the distance between the color of this pixel and the color of the current palette swatch
+            deltaE: DeltaE.getDeltaE00(
+                { L: labSwatch.l, A: labSwatch.a, B: labSwatch.b }, { L: labPixel.l, A: labPixel.a, B: labPixel.b })
+        };
+        return obj;
+    });
+    //this part actually finds the nearest color, by finding the minimum distance
+    let result = _.min(deltaEs, _.iteratee('deltaE'));
+    nearestmemo[key] = result;
+    return result;
+}
+
+function ditherHelper(img, startIdx, multiplier, error) {
+    //img: Uint8ClampedArray with imageData
+    //startIdx: int, index of a red component in an image
+    //multiplier: float
+    //error: { r: int, g: int, b: int }
+    if (startIdx < img.length) {
+        img[startIdx] += error.r * multiplier;
+        img[startIdx+1] += error.g * multiplier;
+        img[startIdx+2] += error.b * multiplier;
+    }
+}
 
 function buildPath(file) {
   var parts = document.location.href.split('/');
@@ -159,22 +213,39 @@ function paletteSetup() {
     }
     //empty the nearestmemo cache; it assumes the current palette
     nearestmemoa = {};
+    nearestmemo = {};
     drawPalette();
 }
 
+function loadPaletteFromFile(file) {
+    //only the file extension is checked; i.e., it might be a valid file but need renaming
+    const supportedByAnypalette = ['pal', 'gpl', 'aco', 'ase',
+         'txt','psppalette', 'hpl', 'cs', 'wpe', 'sketchpalette',
+         'spl', 'soc', 'colors', 'theme', 'themepack',
+         'css', 'scss', 'styl',
+         'html', 'svg', 'js'
+    ]; //I worry about supporting some of these.
+    if (supportedByAnypalette.includes(_.last(file.name.split('.')))) {
+        AnyPalette.loadPalette(file, function (error, palette) {
+            if (palette) {
+                currentPalette = palette;
+                paletteSetup();
+            }
+            else if (error) {
+                alert(error);
+            }
+            else {
+                alert("Something has gone horribly wrong.");
+            }
+        });
+    }
+    else {
+        alert("The palette format is unsupported.");
+    }
+}
+
 const loadPalette = () => {
-    loadPaletteFromFile(document.getElementById("uploadPalette").files[0], function(error, palette) {
-        if (palette) {
-            currentPalette = palette;
-            paletteSetup();
-        }
-        else if (error) {
-            alert(error);
-        }
-        else {
-            alert("Something has gone horribly wrong.");
-        }
-    });
+    loadPaletteFromFile(document.getElementById("uploadPalette").files[0]);
 }
 
 function swapColors() {
@@ -191,9 +262,6 @@ function swapColors() {
         //this is running in its own thread and won't hang the page (yay!)
         worker.postMessage([imageData.data, currentPalette, canvasA.width, dithering]);
         console.log("message posted to worker");
-
-        //I was experimenting with a loader image, but it hasn't worked out so far
-        //document.getElementsByClassName('loader')[0].setAttribute("style", `display: block; position: absolute; left: 70%; top: 60%`)
     }
     else {
         //it sucks if we get down here.  bigger image/palette combinations will take a while, and the browser will complain.
@@ -219,18 +287,18 @@ function swapColors() {
                 //  . *
                 //* * *
                 //make sure this pixel is really on the right
-                if ( Math.floor((i+4)/width) == Math.floor(i/width ) ){
+                if ( Math.floor((i+4)/canvasA.width) == Math.floor(i/canvasA.width) ){
                     ditherHelper(data, i+4, 7/16, pixerror);
                 }
 
-                let below = i + width;
+                let below = i + canvasA.width;
                 ditherHelper(data, below, 5/16, pixerror);
 
-                if ( Math.floor(below/width) == Math.floor((below-4)/width) ){
+                if ( Math.floor(below/canvasA.width) == Math.floor((below-4)/canvasA.width) ){
                     ditherHelper(data, below-4, 3/16, pixerror);
                 }
 
-                if ( Math.floor(below/width) == Math.floor((below+4)/width) ){
+                if ( Math.floor(below/canvasA.width) == Math.floor((below+4)/canvasA.width) ){
                     ditherHelper(data, below+4, 1/16, pixerror);
                 }
             }
@@ -253,7 +321,6 @@ worker.onmessage = function (e) {
     ctx.putImageData(imageData, 0, 0);
      //since the Web Worker doesn't have access to nearestmemo, its copied back and forth between the threads
     nearestmemoa = e.data[1];
-    //document.getElementsByClassName('loader')[0].setAttribute("style", "display: none");
     console.log("message received from worker");
     document.getElementById("loading").style.display = "none";
 }
