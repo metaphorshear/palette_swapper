@@ -11,5 +11,9 @@
   },
   "dependencies": {
     "jest": "^30.2.0"
+  },
+  "devDependencies": {
+    "cross-fetch": "^4.1.0",
+    "jest-environment-jsdom": "^30.2.0"
   }
 }
