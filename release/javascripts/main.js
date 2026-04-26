@@ -1,27 +1,64 @@
 //globals
 
-var currentPalette;
-var skipFirstColor = true;
 var labmemo = {};
 var nearestmemo = {};
+var nearestmemoa = nearestmemo;
+var currentPalette;
+var skipFirstColor = true; //skip the first color in a palette, assuming it is a transparent color
+
+var loading;
 var dithering = false;
-var worker;
 
-// Initialize worker (remove the blob hack)
-if (window.Worker) {
-  worker = new Worker("javascripts/worker.js");
-
-  worker.onmessage = function (e) {
-    let canvasB = document.getElementById("image_after");
-    let ctx = canvasB.getContext("2d");
-    let imageData = ctx.getImageData(0, 0, canvasB.width, canvasB.height);
-    imageData.data.set(e.data[0]);
-    ctx.putImageData(imageData, 0, 0);
-    nearestmemo = e.data[1];
-    console.log("message received from worker");
-    document.getElementById("loading").style.display = "none";
-  };
+function buildPath(file) {
+  var parts = document.location.href.split('/');
+  parts[parts.length - 1] = file;
+  return parts.join('/');
 }
+
+//this function runs inside the worker blob; functions are injected via .toString() serialization below
+function workerImageProcess(e) {
+    if (e.data.scriptUrls) {
+        importScripts(...e.data.scriptUrls);
+        return;
+    }
+    var data = new Uint8ClampedArray(e.data[0]);
+    data.set(e.data[0]);
+    var width = e.data[2];
+    var dithering = e.data[3];
+    var result = processImageData(data, e.data[1], width, dithering, nearestmemo, labmemo);
+    nearestmemo = result.nearestmemo;
+    postMessage([result.data, nearestmemo]);
+}
+
+//this is a hack to let Web Workers run without needing a webserver
+//https://gist.github.com/walfie/a80c4432bcff70fb826d5d28158e9cc4
+//shared functions are serialized via .toString() so worker.js is no longer needed
+var worker = (function() {
+    var blobSrc = [
+        '(function(){',
+        'var labmemo={};',
+        'var nearestmemo={};',
+        ditherHelper.toString() + ';',
+        d3lab.toString() + ';',
+        findNearestColor.toString() + ';',
+        processImageData.toString() + ';',
+        'onmessage=' + workerImageProcess.toString() + ';',
+        '})();'
+    ].join('\n');
+    var blob = new Blob([blobSrc], {type: 'application/javascript'});
+    var blobUrl = URL.createObjectURL(blob);
+    var w = new Worker(blobUrl);
+    URL.revokeObjectURL(blobUrl);
+    return w;
+})();
+
+var includeUrl = buildPath('javascripts/deltae.global.min.js');
+var d3colorUrl = buildPath('javascripts/d3-color.js');
+var underscoreUrl = buildPath('javascripts/underscore-min.js');
+
+worker.postMessage({ scriptUrls: [includeUrl, d3colorUrl, underscoreUrl] });
+//end client-side Web Worker hack
+
 
 function scaleImage(img) {
   let width = img.width;
@@ -117,6 +154,7 @@ function paletteSetup() {
   }
   //empty the nearestmemo cache; it assumes the current palette
   nearestmemo = {};
+  nearestmemoa = {};
   drawPalette();
 }
 
@@ -165,52 +203,52 @@ function loadPaletteFromFile() {
   }
 }
 
+const loadPalette = () => {
+    loadPaletteFromFile(document.getElementById("uploadPalette").files[0]);
+}
+
 function swapColors() {
-  document.getElementById("loading").style.display = "block";
-  let canvasA = document.getElementById("image_before");
-  let canvasB = document.getElementById("image_after");
-  //we're always reading from the "before" image and writing to the "after" image
-  let ctx = canvasA.getContext("2d");
+    document.getElementById("loading").style.display = "block";
+    let canvasA = document.getElementById('image_before');
+    let canvasB = document.getElementById('image_after');
+	//we're always reading from the "before" image and writing to the "after" image
+    let ctx = canvasA.getContext('2d');
 
-  //ctx.drawImage(canvasA, 0, 0);  //not necessary, but a matter of taste.  displays the original image on both sides before processing is done
-  let imageData = ctx.getImageData(0, 0, canvasA.width, canvasA.height);
+    //ctx.drawImage(canvasA, 0, 0);  //not necessary, but a matter of taste.  displays the original image on both sides before processing is done
+    let imageData = ctx.getImageData(0, 0, canvasA.width, canvasA.height);
 
-  if (worker) {
-    //this is running in its own thread and won't hang the page (yay!)
-    worker.postMessage([
-      imageData.data,
-      currentPalette,
-      canvasA.width,
-      dithering,
-    ]);
-    console.log("message posted to worker");
-  } else {
-    // Fallback: use shared processing function directly
-    let data = new Uint8ClampedArray(imageData.data);
+    if (window.Worker) {
+        //this is running in its own thread and won't hang the page (yay!)
+        worker.postMessage([imageData.data, currentPalette, canvasA.width, dithering]);
+        console.log("message posted to worker");
+    }
+    else {
+        //it sucks if we get down here.  bigger image/palette combinations will take a while, and the browser will complain.
+        let data = new Uint8ClampedArray(imageData.data);
+        data.set(imageData.data);
+        let t0 = performance.now();
+        let result = processImageData(data, currentPalette, canvasA.width, dithering, nearestmemo, labmemo);
+        nearestmemo = result.nearestmemo;
+        document.getElementById("loading").style.display = "none";
+        let t1 = performance.now();
+        console.log(`Time to swap colors of whole image: ${t1 - t0} ms`); //probably a lot
+        ctx = canvasB.getContext('2d');
+        let imageDataB = ctx.getImageData(0, 0, canvasB.width, canvasB.height);
+        imageDataB.data.set(result.data);
+        ctx.putImageData(imageDataB, 0, 0);
+    }
+}
 
-    let t0 = performance.now();
-
-    // Call shared processing function (no duplication!)
-    let result = processImageData(
-      data,
-      currentPalette,
-      canvasA.width,
-      dithering,
-      nearestmemo,
-      labmemo
-    );
-
-    let t1 = performance.now();
-    console.log(`Time to swap colors: ${t1 - t0} ms`);
-
-    ctx = canvasB.getContext("2d");
-    let imageDataB = ctx.getImageData(0, 0, canvasB.width, canvasB.height);
-    imageDataB.data.set(result.data);
-    ctx.putImageData(imageDataB, 0, 0);
-
-    nearestmemo = result.nearestmemo;
+worker.onmessage = function (e) {
+    let canvasB = document.getElementById('image_after');
+    let ctx = canvasB.getContext('2d');
+    let imageData = ctx.getImageData(0, 0, canvasB.width, canvasB.height);
+    imageData.data.set(e.data[0]);
+    ctx.putImageData(imageData, 0, 0);
+     //since the Web Worker doesn't have access to nearestmemo, its copied back and forth between the threads
+    nearestmemoa = e.data[1];
+    console.log("message received from worker");
     document.getElementById("loading").style.display = "none";
-  }
 }
 
 //not sure yet if these are the functions I want bound to these listeners.  but I guess that can wait.
