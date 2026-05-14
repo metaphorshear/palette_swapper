@@ -9,6 +9,7 @@ const config = {
     "^.*\\/deltae\\.global\\.min\\.js$":
       "<rootDir>/test/__mocks__/deltae.global.min.js",
     "^.*\\/underscore-min\\.js$": "<rootDir>/test/__mocks__/underscore-min.js",
+    "^.*\\/anypalette\\.js$": "<rootDir>/test/__mocks__/anypalette.js",
   },
 };
 
