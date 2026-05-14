@@ -1,19 +1,27 @@
 ﻿<!DOCTYPE html>
-<html><head>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Palette Swapper</title><link rel="stylesheet" href="javascripts/pure-min.css">
+<html>
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Palette Swapper</title>
+    <link rel="stylesheet" href="javascripts/pure-min.css">
     <link rel="stylesheet" href="javascripts/grids-responsive-min.css">
     <link rel="stylesheet" href="javascripts/loading.css">
     <script src="javascripts/underscore-min.js"></script>
     <script src="javascripts/anypalette.js"></script>
     <script src="javascripts/deltae.global.min.js"></script>
     <script src="javascripts/d3-color.js"></script>
+    <script src="javascripts/color-processor.js"></script>
     <script src="javascripts/main.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1"></head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
 <body>
     <div class="pure-g" style="margin-left: 2em">
-        <div class="pure-u-1"><h1>Palette Swapper</h1>
-            <p>Upload an image and palette below and click "start".  Processing may take a while, especially for larger palettes, but please be patient.</p>
+        <div class="pure-u-1">
+            <h1>Palette Swapper</h1>
+            <p>Upload an image and palette below and click "start". Processing may take a while, especially for larger
+                palettes, but please be patient.</p>
         </div>
         <div class="pure-u-1-2">
             <canvas class="pure-img" id="image_before" style="margin: 1em"></canvas>
@@ -39,9 +47,10 @@
         </div>
         <div class="pure-u-1">
             <form class="pure-form">
-            Check here for dithering: <input type="checkbox" onchange="dithering = this.checked">
+                Check here for dithering: <input type="checkbox" onchange="dithering = this.checked">
             </form>
         </div>
     </div>
 </body>
+
 </html>
